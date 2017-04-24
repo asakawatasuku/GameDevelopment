@@ -4,6 +4,9 @@
 
 #pragma once
 
+#include <SpriteFont.h>
+#include <SpriteBatch.h>
+
 #include "StepTimer.h"
 
 
@@ -62,4 +65,12 @@ private:
 
     // Rendering loop timer.
     DX::StepTimer                                   m_timer;
+
+
+	std::unique_ptr<DirectX::SpriteBatch> m_spriteBatch;
+	std::unique_ptr<DirectX::SpriteFont> m_spriteFont;
+
+	std::wstring m_str;
+
+	int m_cnt;
 };
