@@ -7,7 +7,13 @@
 #include <sstream>
 #include <WICTextureLoader.h>
 #include <DDSTextureLoader.h>
+#include <iostream>
 
+#include "ADX2Le.h"
+#include "Resources\Music\Basic.h"
+
+
+#pragma comment(lib, "cri_ware_pcx86_LE_import.lib")
 
 extern void ExitGame();
 
@@ -23,6 +29,12 @@ Game::Game() :
     m_featureLevel(D3D_FEATURE_LEVEL_9_1)
 {
 }
+
+Game::~Game()
+{
+	ADX2Le::Finalize();
+}
+
 
 // Initialize the Direct3D resources required to run.
 void Game::Initialize(HWND window, int width, int height)
@@ -42,6 +54,7 @@ void Game::Initialize(HWND window, int width, int height)
     m_timer.SetTargetElapsedSeconds(1.0 / 60);
     */
 
+	// スプライト
 	m_spriteBatch = std::make_unique<SpriteBatch>(m_d3dContext.Get());
 	m_spriteFont = std::make_unique<SpriteFont>(m_d3dDevice.Get(), L"Resources\\myfile.spritefont");
 
@@ -53,18 +66,35 @@ void Game::Initialize(HWND window, int width, int height)
 		CreateWICTextureFromFile(m_d3dDevice.Get(), L"Resources\\cat.png",
 			resource.GetAddressOf(),
 			m_texture.ReleaseAndGetAddressOf()));
+	DX::ThrowIfFailed(
+		CreateWICTextureFromFile(m_d3dDevice.Get(), L"Resources\\agira.png",
+			resource.GetAddressOf(),
+			m_agira.ReleaseAndGetAddressOf()));
+	DX::ThrowIfFailed(
+		CreateWICTextureFromFile(m_d3dDevice.Get(), L"Resources\\rotomu.png",
+			resource.GetAddressOf(),
+			m_rotomu.ReleaseAndGetAddressOf()));
 	/*DX::ThrowIfFailed(
 		CreateDDSTextureFromFile(m_d3dDevice.Get(), L"Resources\\cat.dds",
 			resource.GetAddressOf(),
 			m_texture.ReleaseAndGetAddressOf()));*/
 
+	//m_spriteBatch = std::make_unique<SpriteBatch>(m_d3dContext.Get(), m_agira);
 
 	// 猫のテクスチャ
 	ComPtr<ID3D11Texture2D> cat;
 	DX::ThrowIfFailed(resource.As(&cat));
+	ComPtr<ID3D11Texture2D> agira;
+	DX::ThrowIfFailed(resource.As(&agira));
+	ComPtr<ID3D11Texture2D> rotomu;
+	DX::ThrowIfFailed(resource.As(&rotomu));
 	// テクスチャの情報
 	CD3D11_TEXTURE2D_DESC catDesc;
 	cat->GetDesc(&catDesc);
+	CD3D11_TEXTURE2D_DESC agiraDesc;
+	cat->GetDesc(&agiraDesc);
+	CD3D11_TEXTURE2D_DESC rotomuDesc;
+	cat->GetDesc(&rotomuDesc);
 
 	// テクスチャの原点を画像の中心にする
 	m_origin.x = float(catDesc.Width / 2);
@@ -75,6 +105,19 @@ void Game::Initialize(HWND window, int width, int height)
 	m_screenPos.y = m_outputHeight / 2.f;
 
 	m_state = std::make_unique<CommonStates>(m_d3dDevice.Get());
+
+	// 音
+	ADX2Le::Initialize("Resources\\Sounds\\NewProject.acf");
+	ADX2Le::LoadAcb("Resources\\Sounds\\CueSheet_0.acb");
+	ADX2Le::Play(CRI_BASIC_MUSIC1);
+
+
+	m_gamepad = std::make_unique<GamePad>();
+
+	flag = false;
+
+	m_joypad = std::make_unique<JoyPad>();
+	m_joypad->initialize(window);
 }
 
 // Executes the basic game loop.
@@ -98,46 +141,239 @@ void Game::Update(DX::StepTimer const& timer)
 
 	m_cnt++;
 
+	// 文字描画用
 	std::wstringstream ss;
-
 	ss << L"aiueo" << m_cnt << L"kakikukeko";
-
 	m_str = ss.str();
+
+	// 音
+	ADX2Le::Update();
+
+
+	
+
+	//if (padstate.IsConnected())
+	//{
+	//	if (padstate.IsAPressed())
+	//	{
+	//		// 押されている
+
+	//	}
+	//	if (padstate.IsBPressed())
+	//	{
+	//		// 押されている
+	//	}
+	//	if (padstate.buttons.y)
+	//	{
+
+	//	}
+	//	if (padstate.IsDPadDownPressed())
+	//	{
+
+	//	}
+	//	if (padstate.dpad.up || padstate.dpad.down || padstate.dpad.left || padstate.dpad.right)
+	//	{
+
+	//	}
+
+	//	// 左スティックのXY
+	//	float posx = padstate.thumbSticks.leftX;
+	//	float posy = padstate.thumbSticks.leftY;
+
+	//	// 右トリガーがどれだけ押されたか
+	//	float throttle = padstate.triggers.right;
+
+	//	// 振動
+	//	//m_gamepad->SetVibration(0, 0.5f, 0.25f);
+
+	//	// デバイスの能力を取得
+	//	GamePad::Capabilities caps = m_gamepad->GetCapabilities(0);
+	//	if (caps.IsConnected())
+	//	{
+	//		if (caps.gamepadType == GamePad::Capabilities::FLIGHT_STICK)
+	//		{
+
+	//		}
+	//		else
+	//		{
+
+	//		}
+	//	}
+	//}
+
+	/*GamePad::ButtonStateTracker tracker;
+
+		if (tracker.back == GamePad::ButtonStateTracker::PRESSED && flag == false)
+		{
+			std::wstringstream s1;
+			s1 << L"mode1";
+			m_str1 = s1.str();
+
+			flag = true;
+		}
+		else if (tracker.back == GamePad::ButtonStateTracker::PRESSED && flag == true)
+		{
+			std::wstringstream s2;
+			s2 << L"mode2";
+			m_str2 = s2.str();
+
+			flag = false;
+		}*/
+
+	//GamePad::State padstate = m_gamepad->GetState(0, GamePad::DEAD_ZONE_CIRCULAR);
+	//GamePad::ButtonStateTracker tracker;
+	//if (padstate.IsConnected())
+	//{
+	//	tracker.Update(padstate);
+	//	if (tracker.back == GamePad::ButtonStateTracker::RELEASED && flag == false)
+	//	{
+	//		std::wstringstream s1;
+	//		s1 << L"mode1";
+	//		m_str = s1.str();
+
+	//		flag = true;
+	//	}
+	//	else if (tracker.back == GamePad::ButtonStateTracker::RELEASED && flag == true)
+	//	{
+	//		std::wstringstream s2;
+	//		s2 << L"mode2";
+	//		m_str = s2.str();
+
+	//		flag = false;
+	//	}
+
+	//	if (flag == false)
+	//	{
+	//		if (padstate.IsAPressed())
+	//		{
+	//			// 押されている
+	//			flag2 = false;
+	//			//m_spriteBatch->Draw(m_agira.Get(), m_screenPos, nullptr, Colors::White, 0.f, m_origin);
+	//		}
+	//		if (padstate.IsBPressed())
+	//		{
+	//			// 押されている
+	//			flag2 = true;
+	//			//m_spriteBatch->Draw(m_rotomu.Get(), m_screenPos, nullptr, Colors::White, 0.f, m_origin);
+	//		}
+	//	}
+
+	//	if (flag == true)
+	//	{
+	//		if (padstate.IsAPressed())
+	//		{
+	//			// 押されている
+	//			flag2 = true;
+	//			//m_spriteBatch->Draw(m_rotomu.Get(), m_screenPos, nullptr, Colors::White, 0.f, m_origin);
+	//		}
+	//		if (padstate.IsBPressed())
+	//		{
+	//			// 押されている
+	//			flag2 = false;
+	//			//m_spriteBatch->Draw(m_agira.Get(), m_screenPos, nullptr, Colors::White, 0.f, m_origin);
+	//		}
+	//	}
+	//}
+	
 
 }
 
 // Draws the scene.
 void Game::Render()
 {
-    // Don't try to render anything before the first Update.
-    if (m_timer.GetFrameCount() == 0)
-    {
-        return;
-    }
+	// Don't try to render anything before the first Update.
+	if (m_timer.GetFrameCount() == 0)
+	{
+		return;
+	}
 
-    Clear();
+	Clear();
 
-    // TODO: Add your rendering code here.
+	// TODO: Add your rendering code here.
 	//CommonStates states(m_d3dDevice.Get());
 
 	m_spriteBatch->Begin(SpriteSortMode_Deferred, m_state->NonPremultiplied());
 
-	RECT rect;
-	rect.left = 30;
-	rect.right = 70;
-	rect.top = 30;
-	rect.bottom = 70;
+	//RECT rect;
+	//rect.left = 30;
+	//rect.right = 70;
+	//rect.top = 30;
+	//rect.bottom = 70;
 	//XMConvertToRadians(90);
 
 	// スプライトの描画
-	m_spriteBatch->Draw(m_texture.Get(), m_screenPos, nullptr, Colors::White, 0.f, m_origin);
+	//m_spriteBatch->Draw(m_texture.Get(), m_screenPos, nullptr, Colors::White, 0.f, m_origin);
 
 	// 文字の描画
 	//m_spriteFont->DrawString(m_spriteBatch.get(), L"Hello, world!", XMFLOAT2(100, 100));
-	m_spriteFont->DrawString(m_spriteBatch.get(), m_str.c_str(), XMFLOAT2(100, 100));
+	//m_spriteFont->DrawString(m_spriteBatch.get(), m_str.c_str(), XMFLOAT2(100, 100));
 
+
+	//if (flag2 == false)
+	//{
+	//	m_spriteBatch->Draw(m_agira.Get(), m_screenPos, nullptr, Colors::White, 0.f, m_origin);
+	//}
+	//else
+	//{
+	//	m_spriteBatch->Draw(m_rotomu.Get(), m_screenPos, nullptr, Colors::White, 0.f, m_origin);
+	//}
+
+
+	GamePad::State padstate = m_gamepad->GetState(0);
+	GamePad::ButtonStateTracker tracker;
 	
+	if (padstate.IsConnected())
+	{
+		tracker.Update(padstate);
+		if (padstate.IsBackPressed() && flag == false)
+		{
+			std::wstringstream s1;
+			s1 << L"mode1";
+			m_str1 = s1.str();
+
+			m_spriteFont->DrawString(m_spriteBatch.get(), m_str1.c_str(), XMFLOAT2(100, 100));
+			flag = true;
+		}	
+		else if (padstate.IsBackPressed() && flag == true)
+		{
+			std::wstringstream s2;
+			s2 << L"mode2";
+			m_str2 = s2.str();
+
+			m_spriteFont->DrawString(m_spriteBatch.get(), m_str2.c_str(), XMFLOAT2(100, 100));
+			flag = false;
+		}
+
+		if (flag == false)
+		{
+			if (padstate.IsAPressed())
+			{
+				// 押されている
+				m_spriteBatch->Draw(m_agira.Get(), m_screenPos, nullptr, Colors::White, 0.f, m_origin);
+			}
+			if (padstate.IsBPressed())
+			{
+				// 押されている
+				m_spriteBatch->Draw(m_rotomu.Get(), m_screenPos, nullptr, Colors::White, 0.f, m_origin);
+			}
+		}
+		else if (flag == true)
+		{
+			if (padstate.IsAPressed())
+			{
+				// 押されている
+				m_spriteBatch->Draw(m_rotomu.Get(), m_screenPos, nullptr, Colors::White, 0.f, m_origin);
+			}
+			if (padstate.IsBPressed())
+			{
+				// 押されている
+				m_spriteBatch->Draw(m_agira.Get(), m_screenPos, nullptr, Colors::White, 0.f, m_origin);
+			}
+		}
+	}
+
 	m_spriteBatch->End();
+
 
     Present();
 }
